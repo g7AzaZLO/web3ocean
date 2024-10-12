@@ -1,32 +1,46 @@
 from web3 import Web3, Account
 import sys
 
-# Подключение к узлу Ethereum
-infura_url = 'https://sapphire.oasis.io'
-web3 = Web3(Web3.HTTPProvider(infura_url))
+# Подключение к узлу Oasis
+chain_url = 'https://sapphire.oasis.io'
+web3 = Web3(Web3.HTTPProvider(chain_url))
 
 if not web3.is_connected():
-    print("Не удалось подключиться к сети Ethereum.")
+    print("Не удалось подключиться к сети Oasis.")
     sys.exit()
 
 
-# Функция для чтения приватных ключей из файла
-def load_wallets():
+def load_wallets() -> list[str]:
+    """
+    Читает приватные ключи из файла wallets.txt.
+
+    Returns:
+        list[str]: Список приватных ключей из файла.
+    """
     with open('wallets.txt', 'r') as file:
         return [line.strip().split()[0] for line in file if line.strip()]
 
 
-# Функция для записи сгенерированных кошельков в файл
-def save_wallet(private_key, public_key):
+def save_wallet(private_key: str, public_key: str) -> None:
+    """
+    Сохраняет приватный и публичный ключи кошелька в файл wallets.txt.
+
+    Args:
+        private_key (str): Приватный ключ кошелька.
+        public_key (str): Публичный адрес кошелька.
+    """
     with open('wallets.txt', 'a') as file:
         # Проверка, не пустой ли файл, и добавление новой строки перед записью
-        if file.tell() != 0:  # Если файл не пустой
+        if file.tell() != 0:
             file.write("\n")
         file.write(f"{private_key} {public_key}")
 
 
-# Функция проверки балансов всех кошельков
-def check_balances():
+def check_balances() -> None:
+    """
+    Проверяет и выводит баланс каждого кошелька, записанного в wallets.txt.
+    Также выводит общую сумму средств на всех кошельках.
+    """
     private_keys = load_wallets()
     total_balance = 0
     for pk in private_keys:
@@ -37,14 +51,19 @@ def check_balances():
         if balance == 0:
             print(f"Адрес {from_address} имеет нулевой баланс. Пропускаем.")
         else:
-            print(f"Баланс адреса {from_address}: {web3.from_wei(balance, 'ether')} ETH")
+            print(f"Баланс адреса {from_address}: {web3.from_wei(balance, 'ether')} ROSE")
             total_balance += balance
 
-    print(f"Общая сумма на всех кошельках: {web3.from_wei(total_balance, 'ether')} ETH")
+    print(f"Общая сумма на всех кошельках: {web3.from_wei(total_balance, 'ether')} ROSE")
 
 
-# Функция для перевода средств с кошельков на указанный адрес
-def transfer_funds():
+def transfer_funds() -> None:
+    """
+    Переводит все доступные средства с каждого кошелька из wallets.txt
+    на указанный адрес, после вычета комиссии за транзакцию.
+
+    Запрашивает адрес назначения у пользователя и проверяет его на корректность.
+    """
     private_keys = load_wallets()
     destination_address = input("Введите адрес кошелька для получения средств: ")
 
@@ -61,8 +80,22 @@ def transfer_funds():
             print(f"Адрес {from_address} имеет нулевой баланс. Пропускаем.")
             continue
 
-        gas_limit = 2100000
         gas_price = web3.eth.gas_price
+
+        # Формируем временную транзакцию для оценки газа
+        temp_tx = {
+            'from': from_address,
+            'to': destination_address,
+            'value': balance,
+        }
+
+        try:
+            # Оценка газ-лимита для транзакции
+            gas_limit = web3.eth.estimate_gas(temp_tx)
+        except Exception as e:
+            print(f"Не удалось оценить газ для {from_address}: {e}")
+            continue
+
         gas_cost = gas_price * gas_limit
 
         if balance <= gas_cost:
@@ -86,8 +119,13 @@ def transfer_funds():
     print("Все транзакции обработаны.")
 
 
-# Функция для генерации новых кошельков
-def generate_wallets():
+def generate_wallets() -> None:
+    """
+    Генерирует указанное количество новых кошельков, выводит их информацию
+    и сохраняет в файл wallets.txt.
+
+    Запрашивает у пользователя количество кошельков для генерации.
+    """
     nums = int(input("Введите количество кошельков для генерации: "))
     Account.enable_unaudited_hdwallet_features()
 
@@ -101,8 +139,11 @@ def generate_wallets():
         save_wallet(account.key.hex(), account.address)
 
 
-# Меню выбора действий
-def menu():
+def menu() -> None:
+    """
+    Меню выбора действий. Позволяет пользователю выбирать между проверкой балансов,
+    переводом средств и генерацией новых кошельков.
+    """
     while True:
         print("\nВыберите действие:")
         print("1. Проверить баланс кошельков")
