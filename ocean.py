@@ -33,7 +33,7 @@ def save_wallet(private_key: str, public_key: str) -> None:
         # Проверка, не пустой ли файл, и добавление новой строки перед записью
         if file.tell() != 0:
             file.write("\n")
-        file.write(f"{private_key} {public_key}")
+        file.write(f"0x{private_key} {public_key}")
 
 
 def check_balances() -> None:
@@ -134,7 +134,7 @@ def generate_wallets() -> None:
         account, mnemonic = Account.create_with_mnemonic()
         print(f"Адрес вашего кошелька: {account.address}")
         print(f"Сид фраза вашего кошелька: {mnemonic}")
-        print(f"Приватный ключ вашего кошелька: {account.key.hex()}")
+        print(f"Приватный ключ вашего кошелька: 0x{account.key.hex()}")
 
         save_wallet(account.key.hex(), account.address)
 
